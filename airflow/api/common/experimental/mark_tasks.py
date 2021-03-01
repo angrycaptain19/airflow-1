@@ -135,19 +135,21 @@ def set_state(
 
 
 # Flake and pylint disagree about correct indents here
-def all_subdag_tasks_query(sub_dag_run_ids, session, state, confirmed_dates):  # noqa: E123
+def all_subdag_tasks_query(sub_dag_run_ids, session, state, confirmed_dates):    # noqa: E123
     """Get *all* tasks of the sub dags"""
-    qry_sub_dag = (
+    return (
         session.query(TaskInstance)
-        .filter(TaskInstance.dag_id.in_(sub_dag_run_ids), TaskInstance.execution_date.in_(confirmed_dates))
+        .filter(
+            TaskInstance.dag_id.in_(sub_dag_run_ids),
+            TaskInstance.execution_date.in_(confirmed_dates),
+        )
         .filter(or_(TaskInstance.state.is_(None), TaskInstance.state != state))
-    )  # noqa: E123
-    return qry_sub_dag
+    )
 
 
 def get_all_dag_task_query(dag, session, state, task_ids, confirmed_dates):
     """Get all tasks of the main dag that will be affected by a state change"""
-    qry_dag = (
+    return (
         session.query(TaskInstance)
         .filter(
             TaskInstance.dag_id == dag.dag_id,
@@ -156,7 +158,6 @@ def get_all_dag_task_query(dag, session, state, task_ids, confirmed_dates):
         )
         .filter(or_(TaskInstance.state.is_(None), TaskInstance.state != state))
     )
-    return qry_dag
 
 
 def get_subdag_runs(dag, session, state, task_ids, commit, confirmed_dates):
@@ -251,15 +252,14 @@ def get_execution_dates(dag, execution_date, future, past):
         start_date = execution_date
     start_date = execution_date if not past else start_date
     if dag.schedule_interval == '@once':
-        dates = [start_date]
+        return [start_date]
     elif not dag.schedule_interval:
         # If schedule_interval is None, need to look at existing DagRun if the user wants future or
         # past runs.
         dag_runs = dag.get_dagruns_between(start_date=start_date, end_date=end_date)
-        dates = sorted({d.execution_date for d in dag_runs})
+        return sorted({d.execution_date for d in dag_runs})
     else:
-        dates = dag.date_range(start_date=start_date, end_date=end_date)
-    return dates
+        return dag.date_range(start_date=start_date, end_date=end_date)
 
 
 @provide_session

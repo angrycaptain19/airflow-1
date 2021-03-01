@@ -58,12 +58,10 @@ class AwsLambdaHook(AwsBaseHook):
 
     def invoke_lambda(self, payload: str) -> str:
         """Invoke Lambda Function"""
-        response = self.conn.invoke(
+        return self.conn.invoke(
             FunctionName=self.function_name,
             InvocationType=self.invocation_type,
             LogType=self.log_type,
             Payload=payload,
             Qualifier=self.qualifier,
         )
-
-        return response

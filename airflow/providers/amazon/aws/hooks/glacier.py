@@ -53,8 +53,7 @@ class GlacierHook(AwsBaseHook):
         :type job_id: str
         """
         self.log.info("Retrieving the job results for vault: %s...", vault_name)
-        response = self.get_conn().get_job_output(vaultName=vault_name, jobId=job_id)
-        return response
+        return self.get_conn().get_job_output(vaultName=vault_name, jobId=job_id)
 
     def describe_job(self, vault_name: str, job_id: str) -> Dict[str, Any]:
         """

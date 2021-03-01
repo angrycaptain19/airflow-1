@@ -561,11 +561,7 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
             )
             .all()
         )
-        if ti:
-            state = ti[0].state
-        else:
-            state = None
-        return state
+        return ti[0].state if ti else None
 
     @provide_session
     def error(self, session=None):
@@ -600,10 +596,7 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
             TaskInstance.execution_date == self.execution_date,
         )
 
-        if lock_for_update:
-            ti = qry.with_for_update().first()
-        else:
-            ti = qry.first()
+        ti = qry.with_for_update().first() if lock_for_update else qry.first()
         if ti:
             # Fields ordered per model definition
             self.start_date = ti.start_date
@@ -948,13 +941,14 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
         """
         from airflow.models.dagrun import DagRun  # Avoid circular import
 
-        dr = (
+        return (
             session.query(DagRun)
-            .filter(DagRun.dag_id == self.dag_id, DagRun.execution_date == self.execution_date)
+            .filter(
+                DagRun.dag_id == self.dag_id,
+                DagRun.execution_date == self.execution_date,
+            )
             .first()
         )
-
-        return dr
 
     @provide_session
     def check_and_change_state_before_execution(  # pylint: disable=too-many-arguments
@@ -1170,9 +1164,8 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
             # current behavior doesn't hit the success callback
             if self.state in {State.SUCCESS, State.FAILED}:
                 return
-            else:
-                self.handle_failure(e, test_mode, error_file=error_file)
-                raise
+            self.handle_failure(e, test_mode, error_file=error_file)
+            raise
         except (Exception, KeyboardInterrupt) as e:
             self.handle_failure(e, test_mode, error_file=error_file)
             raise
@@ -1203,55 +1196,58 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
     @provide_session
     @Sentry.enrich_errors
     def _run_mini_scheduler_on_child_tasks(self, session=None) -> None:
-        if conf.getboolean('scheduler', 'schedule_after_task_execution', fallback=True):
-            from airflow.models.dagrun import DagRun  # Avoid circular import
+        if not conf.getboolean(
+            'scheduler', 'schedule_after_task_execution', fallback=True
+        ):
+            return
+        from airflow.models.dagrun import DagRun  # Avoid circular import
 
-            try:
-                # Re-select the row with a lock
-                dag_run = with_row_locks(
-                    session.query(DagRun).filter_by(
-                        dag_id=self.dag_id,
-                        execution_date=self.execution_date,
-                    ),
-                    session=session,
-                ).one()
+        try:
+            # Re-select the row with a lock
+            dag_run = with_row_locks(
+                session.query(DagRun).filter_by(
+                    dag_id=self.dag_id,
+                    execution_date=self.execution_date,
+                ),
+                session=session,
+            ).one()
 
-                # Get a partial dag with just the specific tasks we want to
-                # examine. In order for dep checks to work correctly, we
-                # include ourself (so TriggerRuleDep can check the state of the
-                # task we just executed)
-                partial_dag = self.task.dag.partial_subset(
-                    self.task.downstream_task_ids,
-                    include_downstream=False,
-                    include_upstream=False,
-                    include_direct_upstream=True,
-                )
+            # Get a partial dag with just the specific tasks we want to
+            # examine. In order for dep checks to work correctly, we
+            # include ourself (so TriggerRuleDep can check the state of the
+            # task we just executed)
+            partial_dag = self.task.dag.partial_subset(
+                self.task.downstream_task_ids,
+                include_downstream=False,
+                include_upstream=False,
+                include_direct_upstream=True,
+            )
 
-                dag_run.dag = partial_dag
-                info = dag_run.task_instance_scheduling_decisions(session)
+            dag_run.dag = partial_dag
+            info = dag_run.task_instance_scheduling_decisions(session)
 
-                skippable_task_ids = {
-                    task_id
-                    for task_id in partial_dag.task_ids
-                    if task_id not in self.task.downstream_task_ids
-                }
+            skippable_task_ids = {
+                task_id
+                for task_id in partial_dag.task_ids
+                if task_id not in self.task.downstream_task_ids
+            }
 
-                schedulable_tis = [ti for ti in info.schedulable_tis if ti.task_id not in skippable_task_ids]
-                for schedulable_ti in schedulable_tis:
-                    if not hasattr(schedulable_ti, "task"):
-                        schedulable_ti.task = self.task.dag.get_task(schedulable_ti.task_id)
+            schedulable_tis = [ti for ti in info.schedulable_tis if ti.task_id not in skippable_task_ids]
+            for schedulable_ti in schedulable_tis:
+                if not hasattr(schedulable_ti, "task"):
+                    schedulable_ti.task = self.task.dag.get_task(schedulable_ti.task_id)
 
-                num = dag_run.schedule_tis(schedulable_tis)
-                self.log.info("%d downstream tasks scheduled from follow-on schedule check", num)
+            num = dag_run.schedule_tis(schedulable_tis)
+            self.log.info("%d downstream tasks scheduled from follow-on schedule check", num)
 
-                session.commit()
-            except OperationalError as e:
-                # Any kind of DB error here is _non fatal_ as this block is just an optimisation.
-                self.log.info(
-                    f"Skipping mini scheduling run due to exception: {e.statement}",
-                    exc_info=True,
-                )
-                session.rollback()
+            session.commit()
+        except OperationalError as e:
+            # Any kind of DB error here is _non fatal_ as this block is just an optimisation.
+            self.log.info(
+                f"Skipping mini scheduling run due to exception: {e.statement}",
+                exc_info=True,
+            )
+            session.rollback()
 
     def _prepare_and_execute_task_with_callbacks(self, context, task):
         """Prepare Task for Execution"""
@@ -1792,8 +1788,7 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
             base_worker_pod=PodGenerator.deserialize_model_file(kube_config.pod_template_file),
         )
         settings.pod_mutation_hook(pod)
-        sanitized_pod = ApiClient().sanitize_for_serialization(pod)
-        return sanitized_pod
+        return ApiClient().sanitize_for_serialization(pod)
 
     def get_email_subject_content(self, exception):
         """Get the email subject content for exceptions."""
@@ -1986,8 +1981,7 @@ class TaskInstance(Base, LoggingMixin):  # pylint: disable=R0902,R0904
                 for result in query.with_entities(XCom.task_id, XCom.value)
             }
 
-            values_ordered_by_id = [vals_kv.get(task_id) for task_id in task_ids]
-            return values_ordered_by_id
+            return [vals_kv.get(task_id) for task_id in task_ids]
         else:
             xcom = query.with_entities(XCom.value).first()
             if xcom:
@@ -2145,11 +2139,7 @@ class SimpleTaskInstance:
             TaskInstance.execution_date == self._execution_date,
         )
 
-        if lock_for_update:
-            ti = qry.with_for_update().first()
-        else:
-            ti = qry.first()
-        return ti
+        return qry.with_for_update().first() if lock_for_update else qry.first()
 
 
 STATICA_HACK = True

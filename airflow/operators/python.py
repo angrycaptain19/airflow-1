@@ -234,19 +234,18 @@ class _PythonDecoratedOperator(BaseOperator):
         self.log.debug("Done. Returned value was: %s", return_value)
         if not self.multiple_outputs:
             return return_value
-        if isinstance(return_value, dict):
-            for key in return_value.keys():
-                if not isinstance(key, str):
-                    raise AirflowException(
-                        'Returned dictionary keys must be strings when using '
-                        f'multiple_outputs, found {key} ({type(key)}) instead'
-                    )
-            for key, value in return_value.items():
-                self.xcom_push(context, key, value)
-        else:
+        if not isinstance(return_value, dict):
             raise AirflowException(
                 f'Returned output was type {type(return_value)} expected dictionary ' 'for multiple_outputs'
             )
+        for key in return_value.keys():
+            if not isinstance(key, str):
+                raise AirflowException(
+                    'Returned dictionary keys must be strings when using '
+                    f'multiple_outputs, found {key} ({type(key)}) instead'
+                )
+        for key, value in return_value.items():
+            self.xcom_push(context, key, value)
         return return_value
 
 

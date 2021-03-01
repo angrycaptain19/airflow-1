@@ -273,21 +273,24 @@ class CeleryExecutor(BaseExecutor):
         self.log.debug('Sent all tasks.')
 
         for key, _, result in key_and_async_results:
-            if isinstance(result, ExceptionWithTraceback) and isinstance(
-                result.exception, AirflowTaskTimeout
+            if (
+                isinstance(result, ExceptionWithTraceback)
+                and isinstance(result.exception, AirflowTaskTimeout)
+                and key in self.task_publish_retries
+                and (
+                    self.task_publish_retries.get(key)
+                    <= self.task_publish_max_retries
+                )
             ):
-                if key in self.task_publish_retries and (
-                    self.task_publish_retries.get(key) <= self.task_publish_max_retries
-                ):
-                    Stats.incr("celery.task_timeout_error")
-                    self.log.info(
-                        "[Try %s of %s] Task Timeout Error for Task: (%s).",
-                        self.task_publish_retries[key],
-                        self.task_publish_max_retries,
-                        key,
-                    )
-                    self.task_publish_retries[key] += 1
-                    continue
+                Stats.incr("celery.task_timeout_error")
+                self.log.info(
+                    "[Try %s of %s] Task Timeout Error for Task: (%s).",
+                    self.task_publish_retries[key],
+                    self.task_publish_max_retries,
+                    key,
+                )
+                self.task_publish_retries[key] += 1
+                continue
             self.queued_tasks.pop(key)
             self.task_publish_retries.pop(key)
             if isinstance(result, ExceptionWithTraceback):
@@ -374,8 +377,9 @@ class CeleryExecutor(BaseExecutor):
                 "Adopted tasks were still pending after %s, assuming they never made it to celery and "
                 "clearing:\n\t%s",
                 self.task_adoption_timeout,
-                "\n\t".join([repr(x) for x in timedout_keys]),
+                "\n\t".join(repr(x) for x in timedout_keys),
             )
+
             for key in timedout_keys:
                 self.event_buffer[key] = (State.FAILED, None)
                 del self.tasks[key]
@@ -419,9 +423,7 @@ class CeleryExecutor(BaseExecutor):
             elif state == celery_states.STARTED:
                 # It's now actually running, so know it made it to celery okay!
                 self.adopted_task_timeouts.pop(key, None)
-            elif state == celery_states.PENDING:
-                pass
-            else:
+            elif state != celery_states.PENDING:
                 self.log.info("Unexpected state for %s: %s", key, state)
         except Exception:  # noqa pylint: disable=broad-except
             self.log.exception("Error syncing the Celery executor, ignoring it.")

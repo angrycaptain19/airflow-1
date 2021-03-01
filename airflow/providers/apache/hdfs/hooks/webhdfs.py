@@ -95,12 +95,9 @@ class WebHDFSHook(BaseHook):
         connection_str = f'http://{connection.host}:{connection.port}'
 
         if _kerberos_security_mode:
-            client = KerberosClient(connection_str)
-        else:
-            proxy_user = self.proxy_user or connection.login
-            client = InsecureClient(connection_str, user=proxy_user)
-
-        return client
+            return KerberosClient(connection_str)
+        proxy_user = self.proxy_user or connection.login
+        return InsecureClient(connection_str, user=proxy_user)
 
     def check_for_path(self, hdfs_path: str) -> bool:
         """

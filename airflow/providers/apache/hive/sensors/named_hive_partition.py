@@ -107,10 +107,9 @@ class NamedHivePartitionSensor(BaseSensorOperator):
         return True
 
     def is_smart_sensor_compatible(self):
-        result = (
+        return (
             not self.soft_fail
             and not self.hook
             and len(self.partition_names) <= 30
             and super().is_smart_sensor_compatible()
         )
-        return result

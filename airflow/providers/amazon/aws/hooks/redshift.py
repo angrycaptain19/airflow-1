@@ -74,7 +74,7 @@ class RedshiftHook(AwsBaseHook):
             SkipFinalClusterSnapshot=skip_final_cluster_snapshot,
             FinalClusterSnapshotIdentifier=final_cluster_snapshot_identifier,
         )
-        return response['Cluster'] if response['Cluster'] else None
+        return response['Cluster'] or None
 
     def describe_cluster_snapshots(self, cluster_identifier: str) -> Optional[List[str]]:
         """
@@ -103,7 +103,7 @@ class RedshiftHook(AwsBaseHook):
         response = self.get_conn().restore_from_cluster_snapshot(
             ClusterIdentifier=cluster_identifier, SnapshotIdentifier=snapshot_identifier
         )
-        return response['Cluster'] if response['Cluster'] else None
+        return response['Cluster'] or None
 
     def create_cluster_snapshot(self, snapshot_identifier: str, cluster_identifier: str) -> str:
         """
@@ -118,4 +118,4 @@ class RedshiftHook(AwsBaseHook):
             SnapshotIdentifier=snapshot_identifier,
             ClusterIdentifier=cluster_identifier,
         )
-        return response['Snapshot'] if response['Snapshot'] else None
+        return response['Snapshot'] or None

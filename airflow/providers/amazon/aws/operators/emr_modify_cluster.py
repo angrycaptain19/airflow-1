@@ -67,6 +67,5 @@ class EmrModifyClusterOperator(BaseOperator):
 
         if response['ResponseMetadata']['HTTPStatusCode'] != 200:
             raise AirflowException(f'Modify cluster failed: {response}')
-        else:
-            self.log.info('Steps concurrency level %d', response['StepConcurrencyLevel'])
-            return response['StepConcurrencyLevel']
+        self.log.info('Steps concurrency level %d', response['StepConcurrencyLevel'])
+        return response['StepConcurrencyLevel']

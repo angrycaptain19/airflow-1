@@ -78,9 +78,7 @@ class AthenaSensor(BaseSensorOperator):
         if state in self.FAILURE_STATES:
             raise AirflowException('Athena sensor failed')
 
-        if state in self.INTERMEDIATE_STATES:
-            return False
-        return True
+        return state not in self.INTERMEDIATE_STATES
 
     @cached_property
     def hook(self) -> AWSAthenaHook:

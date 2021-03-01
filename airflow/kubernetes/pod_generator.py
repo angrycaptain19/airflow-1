@@ -274,7 +274,7 @@ class PodGenerator:
             return base_meta
         if not base_meta and client_meta:
             return client_meta
-        elif client_meta and base_meta:
+        elif client_meta:
             client_meta.labels = merge_objects(base_meta.labels, client_meta.labels)
             client_meta.annotations = merge_objects(base_meta.annotations, client_meta.annotations)
             extend_object_field(base_meta, client_meta, 'managed_fields')
@@ -300,7 +300,7 @@ class PodGenerator:
             return base_spec
         if not base_spec and client_spec:
             return client_spec
-        elif client_spec and base_spec:
+        elif client_spec:
             client_spec.containers = PodGenerator.reconcile_containers(
                 base_spec.containers, client_spec.containers
             )
@@ -472,9 +472,7 @@ class PodGenerator:
 
         safe_uuid = uuid.uuid4().hex  # safe uuid will always be less than 63 chars
         trimmed_pod_id = pod_id[:MAX_LABEL_LEN]
-        safe_pod_id = f"{trimmed_pod_id}.{safe_uuid}"
-
-        return safe_pod_id
+        return f"{trimmed_pod_id}.{safe_uuid}"
 
 
 def merge_objects(base_obj, client_obj):

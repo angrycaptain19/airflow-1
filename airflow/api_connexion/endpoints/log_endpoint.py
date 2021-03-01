@@ -51,11 +51,7 @@ def get_log(session, dag_id, dag_run_id, task_id, task_try_number, full_content=
     if metadata.get('download_logs') and metadata['download_logs']:
         full_content = True
 
-    if full_content:
-        metadata['download_logs'] = True
-    else:
-        metadata['download_logs'] = False
-
+    metadata['download_logs'] = bool(full_content)
     task_log_reader = TaskLogReader()
     if not task_log_reader.supports_read:
         raise BadRequest("Task log handler does not support read logs.")

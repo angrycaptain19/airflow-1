@@ -108,8 +108,7 @@ class AwsGlueJobHook(AwsBaseHook):
 
         try:
             job_name = self.get_or_create_glue_job()
-            job_run = glue_client.start_job_run(JobName=job_name, Arguments=script_arguments)
-            return job_run
+            return glue_client.start_job_run(JobName=job_name, Arguments=script_arguments)
         except Exception as general_error:
             self.log.error("Failed to run aws glue job, error: %s", general_error)
             raise
@@ -126,8 +125,7 @@ class AwsGlueJobHook(AwsBaseHook):
         """
         glue_client = self.get_conn()
         job_run = glue_client.get_job_run(JobName=job_name, RunId=run_id, PredecessorsIncluded=True)
-        job_run_state = job_run['JobRun']['JobRunState']
-        return job_run_state
+        return job_run['JobRun']['JobRunState']
 
     def job_completion(self, job_name: str, run_id: str) -> Dict[str, str]:
         """

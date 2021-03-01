@@ -141,10 +141,7 @@ if conf.getboolean("sentry", 'sentry_on', fallback=False):
             )
 
             for ti in task_instances:
-                data = {}
-                for crumb_tag in self.SCOPE_CRUMBS:
-                    data[crumb_tag] = getattr(ti, crumb_tag)
-
+                data = {crumb_tag: getattr(ti, crumb_tag) for crumb_tag in self.SCOPE_CRUMBS}
                 sentry_sdk.add_breadcrumb(category="completed_tasks", data=data, level="info")
 
         def enrich_errors(self, func):
