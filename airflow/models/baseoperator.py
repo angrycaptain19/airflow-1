@@ -554,14 +554,13 @@ class BaseOperator(Operator, LoggingMixin, TaskMixin, metaclass=BaseOperatorMeta
         will be set to pickup the outlets from this operator. Other will
         be set as a downstream task of this operator.
         """
-        if isinstance(other, BaseOperator):
-            if not self._outlets and not self.supports_lineage:
-                raise ValueError("No outlets defined for this operator")
-            other.add_inlets([self.task_id])
-            self.set_downstream(other)
-        else:
+        if not isinstance(other, BaseOperator):
             raise TypeError(f"Right hand side ({other}) is not an Operator")
 
+        if not self._outlets and not self.supports_lineage:
+            raise ValueError("No outlets defined for this operator")
+        other.add_inlets([self.task_id])
+        self.set_downstream(other)
         return self
 
     # /Composing Operators ---------------------------------------------
@@ -649,7 +648,7 @@ class BaseOperator(Operator, LoggingMixin, TaskMixin, metaclass=BaseOperatorMeta
             raise AirflowException(f"The DAG assigned to {self} can not be changed.")
         elif self.task_id not in dag.task_dict:
             dag.add_task(self)
-        elif self.task_id in dag.task_dict and dag.task_dict[self.task_id] is not self:
+        elif dag.task_dict[self.task_id] is not self:
             dag.add_task(self)
 
         self._dag = dag
@@ -743,13 +742,10 @@ class BaseOperator(Operator, LoggingMixin, TaskMixin, metaclass=BaseOperatorMeta
         """
         if self.weight_rule == WeightRule.ABSOLUTE:
             return self.priority_weight
-        elif self.weight_rule == WeightRule.DOWNSTREAM:
+        elif self.weight_rule != WeightRule.UPSTREAM:
             upstream = False
-        elif self.weight_rule == WeightRule.UPSTREAM:
-            upstream = True
         else:
-            upstream = False
-
+            upstream = True
         if not self._dag:
             return self.priority_weight
         from airflow.models.dag import DAG

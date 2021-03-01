@@ -106,19 +106,17 @@ def users_manage_role(args, remove=False):
         raise SystemExit(f'{args.role} is not a valid role. Valid roles are: {valid_roles}')
 
     if remove:
-        if role in user.roles:
-            user.roles = [r for r in user.roles if r != role]
-            appbuilder.sm.update_user(user)
-            print(f'User "{user}" removed from role "{args.role}"')
-        else:
+        if role not in user.roles:
             raise SystemExit(f'User "{user}" is not a member of role "{args.role}"')
+        user.roles = [r for r in user.roles if r != role]
+        appbuilder.sm.update_user(user)
+        print(f'User "{user}" removed from role "{args.role}"')
     else:
         if role in user.roles:
             raise SystemExit(f'User "{user}" is already a member of role "{args.role}"')
-        else:
-            user.roles.append(role)
-            appbuilder.sm.update_user(user)
-            print(f'User "{user}" added to role "{args.role}"')
+        user.roles.append(role)
+        appbuilder.sm.update_user(user)
+        print(f'User "{user}" added to role "{args.role}"')
 
 
 def users_export(args):

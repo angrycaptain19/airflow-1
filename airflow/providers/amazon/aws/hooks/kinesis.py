@@ -43,6 +43,6 @@ class AwsFirehoseHook(AwsBaseHook):
 
     def put_records(self, records: Iterable):
         """Write batch records to Kinesis Firehose"""
-        response = self.get_conn().put_record_batch(DeliveryStreamName=self.delivery_stream, Records=records)
-
-        return response
+        return self.get_conn().put_record_batch(
+            DeliveryStreamName=self.delivery_stream, Records=records
+        )

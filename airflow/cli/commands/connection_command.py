@@ -84,14 +84,9 @@ def connections_list(args):
 
 def _format_connections(conns: List[Connection], fmt: str) -> str:
     if fmt == '.env':
-        connections_env = ""
-        for conn in conns:
-            connections_env += f"{conn.conn_id}={conn.get_uri()}\n"
-        return connections_env
+        return "".join(f"{conn.conn_id}={conn.get_uri()}\n" for conn in conns)
 
-    connections_dict = {}
-    for conn in conns:
-        connections_dict[conn.conn_id] = {
+    connections_dict = {conn.conn_id: {
             'conn_type': conn.conn_type,
             'description': conn.description,
             'host': conn.host,
@@ -100,8 +95,7 @@ def _format_connections(conns: List[Connection], fmt: str) -> str:
             'schema': conn.schema,
             'port': conn.port,
             'extra': conn.extra,
-        }
-
+        } for conn in conns}
     if fmt == '.yaml':
         return yaml.dump(connections_dict)
 
@@ -123,7 +117,6 @@ def _valid_uri(uri: str) -> bool:
 
 def connections_export(args):
     """Exports all connections to a file"""
-    allowed_formats = ['.yaml', '.json', '.env']
     provided_format = None if args.format is None else f".{args.format.lower()}"
     default_format = provided_format or '.json'
 
@@ -135,6 +128,7 @@ def connections_export(args):
         else:
             _, filetype = os.path.splitext(args.file.name)
             filetype = filetype.lower()
+            allowed_formats = ['.yaml', '.json', '.env']
             if filetype not in allowed_formats:
                 raise SystemExit(
                     f"Unsupported file format. The file must have "

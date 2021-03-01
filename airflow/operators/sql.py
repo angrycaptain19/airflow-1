@@ -213,15 +213,12 @@ class SQLValueCheckOperator(BaseSQLOperator):
 
         if not is_numeric_value_check:
             tests = self._get_string_matches(records, pass_value_conv)
-        elif is_numeric_value_check:
+        else:
             try:
                 numeric_records = self._to_float(records)
             except (ValueError, TypeError):
                 raise AirflowException(f"Converting a result to float failed.\n{error_msg}")
             tests = self._get_numeric_matches(numeric_records, pass_value_conv)
-        else:
-            tests = []
-
         if not all(tests):
             raise AirflowException(error_msg)
 
@@ -463,7 +460,7 @@ class SQLThresholdCheckOperator(BaseSQLOperator):
         Optional: Send data check info and metadata to an external database.
         Default functionality will log metadata.
         """
-        info = "\n".join([f"""{key}: {item}""" for key, item in meta_data.items()])
+        info = "\n".join(f"""{key}: {item}""" for key, item in meta_data.items())
         self.log.info("Log from %s:\n%s", self.dag_id, info)
 
 
@@ -524,12 +521,9 @@ class BranchSQLOperator(BaseSQLOperator, SkipMixin):
                 "No rows returned from sql query. Operator expected True or False return value."
             )
 
-        if isinstance(record, list):
-            if isinstance(record[0], list):
-                query_result = record[0][0]
-            else:
-                query_result = record[0]
-        elif isinstance(record, tuple):
+        if isinstance(record, list) and isinstance(record[0], list):
+            query_result = record[0][0]
+        elif isinstance(record, (list, tuple)):
             query_result = record[0]
         else:
             query_result = record

@@ -80,8 +80,7 @@ class RenderedTaskInstanceFields(Base):
         )
 
         if result:
-            rendered_fields = result.rendered_fields
-            return rendered_fields
+            return result.rendered_fields
         else:
             return None
 

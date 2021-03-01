@@ -66,11 +66,16 @@ def patch_pool(pool_name, session, update_mask=None):
     """Update a pool"""
     # Only slots can be modified in 'default_pool'
     try:
-        if pool_name == Pool.DEFAULT_POOL_NAME and request.json["name"] != Pool.DEFAULT_POOL_NAME:
-            if update_mask and len(update_mask) == 1 and update_mask[0].strip() == "slots":
-                pass
-            else:
-                raise BadRequest(detail="Default Pool's name can't be modified")
+        if (
+            pool_name == Pool.DEFAULT_POOL_NAME
+            and request.json["name"] != Pool.DEFAULT_POOL_NAME
+            and (
+                not update_mask
+                or len(update_mask) != 1
+                or update_mask[0].strip() != "slots"
+            )
+        ):
+            raise BadRequest(detail="Default Pool's name can't be modified")
     except KeyError:
         pass
 
@@ -88,11 +93,10 @@ def patch_pool(pool_name, session, update_mask=None):
         _patch_body = {}
         try:
             update_mask = [
-                pool_schema.declared_fields[field].attribute
-                if pool_schema.declared_fields[field].attribute
-                else field
+                pool_schema.declared_fields[field].attribute or field
                 for field in update_mask
             ]
+
         except KeyError as err:
             raise BadRequest(detail=f"Invalid field: {err.args[0]} in update mask")
         _patch_body = {field: patch_body[field] for field in update_mask}

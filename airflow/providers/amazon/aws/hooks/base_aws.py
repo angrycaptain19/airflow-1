@@ -251,9 +251,8 @@ class _SessionFactory(LoggingMixin):
         # Extract SAML Assertion from the returned HTML / XML
         xml = etree.fromstring(idp_response.content)
         saml_assertion = xml.xpath(xpath)
-        if isinstance(saml_assertion, list):
-            if len(saml_assertion) == 1:
-                saml_assertion = saml_assertion[0]
+        if isinstance(saml_assertion, list) and len(saml_assertion) == 1:
+            saml_assertion = saml_assertion[0]
         if not saml_assertion:
             raise ValueError('Invalid SAML Assertion')
         return saml_assertion
@@ -529,11 +528,10 @@ def _parse_s3_config(
     # Actual Parsing
     if cred_section not in sections:
         raise AirflowException("This config file format is not recognized")
-    else:
-        try:
-            access_key = config.get(cred_section, key_id_option)
-            secret_key = config.get(cred_section, secret_key_option)
-        except Exception:
-            logging.warning("Option Error in parsing s3 config file")
-            raise
-        return access_key, secret_key
+    try:
+        access_key = config.get(cred_section, key_id_option)
+        secret_key = config.get(cred_section, secret_key_option)
+    except Exception:
+        logging.warning("Option Error in parsing s3 config file")
+        raise
+    return access_key, secret_key

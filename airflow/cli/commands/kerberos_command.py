@@ -35,18 +35,16 @@ def kerberos(args):
             "kerberos", args.pid, args.stdout, args.stderr, args.log_file
         )
         stdout = open(stdout, 'w+')
-        stderr = open(stderr, 'w+')
+        with open(stderr, 'w+') as stderr:
+            ctx = daemon.DaemonContext(
+                pidfile=TimeoutPIDLockFile(pid, -1),
+                stdout=stdout,
+                stderr=stderr,
+            )
 
-        ctx = daemon.DaemonContext(
-            pidfile=TimeoutPIDLockFile(pid, -1),
-            stdout=stdout,
-            stderr=stderr,
-        )
+            with ctx:
+                krb.run(principal=args.principal, keytab=args.keytab)
 
-        with ctx:
-            krb.run(principal=args.principal, keytab=args.keytab)
-
-        stdout.close()
-        stderr.close()
+            stdout.close()
     else:
         krb.run(principal=args.principal, keytab=args.keytab)
