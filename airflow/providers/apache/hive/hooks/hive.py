@@ -426,16 +426,20 @@ class HiveCliHook(BaseHook):
         if create or recreate:
             if field_dict is None:
                 raise ValueError("Must provide a field dict when creating a table")
-            fields = ",\n    ".join(['`{k}` {v}'.format(k=k.strip('`'), v=v) for k, v in field_dict.items()])
+            fields = ",\n    ".join(
+                '`{k}` {v}'.format(k=k.strip('`'), v=v)
+                for k, v in field_dict.items()
+            )
+
             hql += f"CREATE TABLE IF NOT EXISTS {table} (\n{fields})\n"
             if partition:
-                pfields = ",\n    ".join([p + " STRING" for p in partition])
+                pfields = ",\n    ".join(p + " STRING" for p in partition)
                 hql += f"PARTITIONED BY ({pfields})\n"
             hql += "ROW FORMAT DELIMITED\n"
             hql += f"FIELDS TERMINATED BY '{delimiter}'\n"
             hql += "STORED AS textfile\n"
             if tblproperties is not None:
-                tprops = ", ".join([f"'{k}'='{v}'" for k, v in tblproperties.items()])
+                tprops = ", ".join(f"'{k}'='{v}'" for k, v in tblproperties.items())
                 hql += f"TBLPROPERTIES({tprops})\n"
             hql += ";"
             self.log.info(hql)
@@ -445,7 +449,7 @@ class HiveCliHook(BaseHook):
             hql += "OVERWRITE "
         hql += f"INTO TABLE {table} "
         if partition:
-            pvals = ", ".join([f"{k}='{v}'" for k, v in partition.items()])
+            pvals = ", ".join(f"{k}='{v}'" for k, v in partition.items())
             hql += f"PARTITION ({pvals})"
 
         # As a workaround for HIVE-10541, add a newline character
@@ -457,12 +461,11 @@ class HiveCliHook(BaseHook):
 
     def kill(self) -> None:
         """Kill Hive cli command"""
-        if hasattr(self, 'sp'):
-            if self.sub_process.poll() is None:
-                print("Killing the Hive job")
-                self.sub_process.terminate()
-                time.sleep(60)
-                self.sub_process.kill()
+        if hasattr(self, 'sp') and self.sub_process.poll() is None:
+            print("Killing the Hive job")
+            self.sub_process.terminate()
+            time.sleep(60)
+            self.sub_process.kill()
 
 
 class HiveMetastoreHook(BaseHook):
@@ -641,21 +644,20 @@ class HiveMetastoreHook(BaseHook):
             table = client.get_table(dbname=schema, tbl_name=table_name)
             if len(table.partitionKeys) == 0:
                 raise AirflowException("The table isn't partitioned")
+            if partition_filter:
+                parts = client.get_partitions_by_filter(
+                    db_name=schema,
+                    tbl_name=table_name,
+                    filter=partition_filter,
+                    max_parts=HiveMetastoreHook.MAX_PART_COUNT,
+                )
             else:
-                if partition_filter:
-                    parts = client.get_partitions_by_filter(
-                        db_name=schema,
-                        tbl_name=table_name,
-                        filter=partition_filter,
-                        max_parts=HiveMetastoreHook.MAX_PART_COUNT,
-                    )
-                else:
-                    parts = client.get_partitions(
-                        db_name=schema, tbl_name=table_name, max_parts=HiveMetastoreHook.MAX_PART_COUNT
-                    )
+                parts = client.get_partitions(
+                    db_name=schema, tbl_name=table_name, max_parts=HiveMetastoreHook.MAX_PART_COUNT
+                )
 
-                pnames = [p.name for p in table.partitionKeys]
-                return [dict(zip(pnames, p.values)) for p in parts]
+            pnames = [p.name for p in table.partitionKeys]
+            return [dict(zip(pnames, p.values)) for p in parts]
 
     @staticmethod
     def _get_max_partition_from_part_specs(
@@ -940,8 +942,7 @@ class HiveServer2Hook(DbApiHook):
         """
         results_iter = self._get_results(hql, schema, fetch_size=fetch_size, hive_conf=hive_conf)
         header = next(results_iter)
-        results = {'data': list(results_iter), 'header': header}
-        return results
+        return {'data': list(results_iter), 'header': header}
 
     def to_csv(
         self,

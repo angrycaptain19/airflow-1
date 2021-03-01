@@ -56,10 +56,9 @@ def argmin(arr, f: Callable) -> Optional[int]:
     min_value = None
     min_idx = None
     for idx, item in enumerate(arr):
-        if item is not None:
-            if min_value is None or f(item) < min_value:
-                min_value = f(item)
-                min_idx = idx
+        if item is not None and (min_value is None or f(item) < min_value):
+            min_value = f(item)
+            min_idx = idx
     return min_idx
 
 
@@ -112,9 +111,11 @@ def secondary_training_status_message(
         return ''
 
     prev_transitions_num = 0
-    if prev_description is not None:
-        if prev_description.get('SecondaryStatusTransitions') is not None:
-            prev_transitions_num = len(prev_description['SecondaryStatusTransitions'])
+    if (
+        prev_description is not None
+        and prev_description.get('SecondaryStatusTransitions') is not None
+    ):
+        prev_transitions_num = len(prev_description['SecondaryStatusTransitions'])
 
     transitions_to_print = (
         current_transitions[-1:]
@@ -601,7 +602,7 @@ class SageMakerHook(AwsBaseHook):  # pylint: disable=too-many-public-methods
                 # the container starts logging, so ignore any errors thrown about that
                 pass
 
-        if len(stream_names) > 0:
+        if stream_names:
             for idx, event in self.multi_stream_iter(log_group, stream_names, positions):
                 self.log.info(event['message'])
                 ts, count = positions[stream_names[idx]]
@@ -850,7 +851,7 @@ class SageMakerHook(AwsBaseHook):  # pylint: disable=too-many-public-methods
 
     def list_training_jobs(
         self, name_contains: Optional[str] = None, max_results: Optional[int] = None, **kwargs
-    ) -> List[Dict]:  # noqa: D402
+    ) -> List[Dict]:    # noqa: D402
         """
         This method wraps boto3's list_training_jobs(). The training job name and max results are configurable
         via arguments. Other arguments are not, and should be provided via kwargs. Note boto3 expects these in
@@ -884,12 +885,11 @@ class SageMakerHook(AwsBaseHook):  # pylint: disable=too-many-public-methods
 
         config.update(kwargs)
         list_training_jobs_request = partial(self.get_conn().list_training_jobs, **config)
-        results = self._list_request(
+        return self._list_request(
             list_training_jobs_request, "TrainingJobSummaries", max_results=max_results
         )
-        return results
 
-    def list_processing_jobs(self, **kwargs) -> List[Dict]:  # noqa: D402
+    def list_processing_jobs(self, **kwargs) -> List[Dict]:    # noqa: D402
         """
         This method wraps boto3's list_processing_jobs(). All arguments should be provided via kwargs.
         Note boto3 expects these in CamelCase format, for example:
@@ -905,10 +905,11 @@ class SageMakerHook(AwsBaseHook):  # pylint: disable=too-many-public-methods
         :return: results of the list_processing_jobs request
         """
         list_processing_jobs_request = partial(self.get_conn().list_processing_jobs, **kwargs)
-        results = self._list_request(
-            list_processing_jobs_request, "ProcessingJobSummaries", max_results=kwargs.get("MaxResults")
+        return self._list_request(
+            list_processing_jobs_request,
+            "ProcessingJobSummaries",
+            max_results=kwargs.get("MaxResults"),
         )
-        return results
 
     def _list_request(
         self, partial_func: Callable, result_key: str, max_results: Optional[int] = None

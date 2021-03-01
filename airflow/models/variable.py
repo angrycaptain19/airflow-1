@@ -101,14 +101,13 @@ class Variable(Base, LoggingMixin):
         :return: Mixed
         """
         obj = Variable.get(key, default_var=None, deserialize_json=deserialize_json)
-        if obj is None:
-            if default is not None:
-                Variable.set(key, default, serialize_json=deserialize_json)
-                return default
-            else:
-                raise ValueError('Default Value must be set')
-        else:
+        if obj is not None:
             return obj
+
+        if default is None:
+            raise ValueError('Default Value must be set')
+        Variable.set(key, default, serialize_json=deserialize_json)
+        return default
 
     @classmethod
     def get(
@@ -155,11 +154,7 @@ class Variable(Base, LoggingMixin):
                 "the environment variable.",
                 env_var_name,
             )
-        if serialize_json:
-            stored_value = json.dumps(value, indent=2)
-        else:
-            stored_value = str(value)
-
+        stored_value = json.dumps(value, indent=2) if serialize_json else str(value)
         Variable.delete(key, session=session)
         session.add(Variable(key=key, val=stored_value))
         session.flush()

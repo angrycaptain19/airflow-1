@@ -56,8 +56,7 @@ class Log(Base):
             self.task_id = kwargs['task_id']
         if 'dag_id' in kwargs:
             self.dag_id = kwargs['dag_id']
-        if 'execution_date' in kwargs:
-            if kwargs['execution_date']:
-                self.execution_date = kwargs['execution_date']
+        if 'execution_date' in kwargs and kwargs['execution_date']:
+            self.execution_date = kwargs['execution_date']
 
         self.owner = owner or task_owner

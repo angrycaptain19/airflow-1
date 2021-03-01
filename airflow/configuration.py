@@ -302,20 +302,22 @@ class AirflowConfigParser(ConfigParser):  # pylint: disable=too-many-ancestors
     def _get_cmd_option(self, section, key):
         fallback_key = key + '_cmd'
         # if this is a valid command key...
-        if (section, key) in self.sensitive_config_values:
-            if super().has_option(section, fallback_key):
-                command = super().get(section, fallback_key)
-                return run_command(command)
+        if (section, key) in self.sensitive_config_values and super().has_option(
+            section, fallback_key
+        ):
+            command = super().get(section, fallback_key)
+            return run_command(command)
         return None
 
     def _get_secret_option(self, section, key):
         """Get Config option values from Secret Backend"""
         fallback_key = key + '_secret'
         # if this is a valid secret key...
-        if (section, key) in self.sensitive_config_values:
-            if super().has_option(section, fallback_key):
-                secrets_path = super().get(section, fallback_key)
-                return _get_config_value_from_secret_backend(secrets_path)
+        if (section, key) in self.sensitive_config_values and super().has_option(
+            section, fallback_key
+        ):
+            secrets_path = super().get(section, fallback_key)
+            return _get_config_value_from_secret_backend(secrets_path)
         return None
 
     def get(self, section, key, **kwargs):
@@ -349,10 +351,9 @@ class AirflowConfigParser(ConfigParser):  # pylint: disable=too-many-ancestors
         if self.airflow_defaults.has_option(section, key) or 'fallback' in kwargs:
             return expand_env_var(self.airflow_defaults.get(section, key, **kwargs))
 
-        else:
-            log.warning("section/key [%s/%s] not found in config", section, key)
+        log.warning("section/key [%s/%s] not found in config", section, key)
 
-            raise AirflowConfigException(f"section/key [{section}/{key}] not found in config")
+        raise AirflowConfigException(f"section/key [{section}/{key}] not found in config")
 
     def _get_option_from_secrets(self, deprecated_key, deprecated_section, key, section):
         # ...then from secret backends
@@ -384,10 +385,11 @@ class AirflowConfigParser(ConfigParser):  # pylint: disable=too-many-ancestors
             # Use the parent's methods to get the actual config here to be able to
             # separate the config from default config.
             return expand_env_var(super().get(section, key, **kwargs))
-        if deprecated_section:
-            if super().has_option(deprecated_section, deprecated_key):
-                self._warn_deprecate(section, key, deprecated_section, deprecated_key)
-                return expand_env_var(super().get(deprecated_section, deprecated_key, **kwargs))
+        if deprecated_section and super().has_option(
+            deprecated_section, deprecated_key
+        ):
+            self._warn_deprecate(section, key, deprecated_section, deprecated_key)
+            return expand_env_var(super().get(deprecated_section, deprecated_key, **kwargs))
         return None
 
     def _get_environment_variables(self, deprecated_key, deprecated_section, key, section):
@@ -745,10 +747,10 @@ def get_airflow_config(airflow_home):
 
 
 def _parameterized_config_from_template(filename) -> str:
-    TEMPLATE_START = '# ----------------------- TEMPLATE BEGINS HERE -----------------------\n'
-
     path = _default_config_file_path(filename)
     with open(path) as fh:
+        TEMPLATE_START = '# ----------------------- TEMPLATE BEGINS HERE -----------------------\n'
+
         for line in fh:
             if line != TEMPLATE_START:
                 continue

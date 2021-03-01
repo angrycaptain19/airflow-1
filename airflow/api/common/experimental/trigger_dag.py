@@ -34,7 +34,7 @@ def _trigger_dag(
     conf: Optional[Union[dict, str]] = None,
     execution_date: Optional[datetime] = None,
     replace_microseconds: bool = True,
-) -> List[DagRun]:  # pylint: disable=too-many-arguments
+) -> List[DagRun]:    # pylint: disable=too-many-arguments
     """Triggers DAG run.
 
     :param dag_id: DAG ID
@@ -50,7 +50,7 @@ def _trigger_dag(
     if dag_id not in dag_bag.dags:
         raise DagNotFound(f"Dag id {dag_id} not found")
 
-    execution_date = execution_date if execution_date else timezone.utcnow()
+    execution_date = execution_date or timezone.utcnow()
 
     if not timezone.is_localized(execution_date):
         raise ValueError("The execution_date should be localized")

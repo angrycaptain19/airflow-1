@@ -47,8 +47,7 @@ my_dir = dirname(__file__)
 def airflow_test_suite() -> unittest.TestSuite:
     """Test suite for Airflow tests"""
     test_loader = unittest.TestLoader()
-    test_suite = test_loader.discover(os.path.join(my_dir, 'tests'), pattern='test_*.py')
-    return test_suite
+    return test_loader.discover(os.path.join(my_dir, 'tests'), pattern='test_*.py')
 
 
 class CleanCommand(Command):
@@ -735,13 +734,7 @@ EXTRAS_REQUIREMENTS["all_dbs"] = all_dbs
 devel_all = list(set(_all_requirements + doc + devel_minreq + devel_hadoop))
 
 # Those are packages excluded for "all" dependencies
-PACKAGES_EXCLUDED_FOR_ALL = []
-PACKAGES_EXCLUDED_FOR_ALL.extend(
-    [
-        'snakebite',
-    ]
-)
-
+PACKAGES_EXCLUDED_FOR_ALL = ['snakebite']
 # Those packages are excluded because they break tests and they are not needed to run our test suite.
 # This can be removed as soon as we get non-conflicting
 # requirements for the apache-beam as well.
@@ -827,7 +820,10 @@ def get_provider_package_from_package_id(package_id: str):
 
 def get_all_provider_packages():
     """Returns all provider packages configured in setup.py"""
-    return " ".join([get_provider_package_from_package_id(package) for package in PROVIDERS_REQUIREMENTS])
+    return " ".join(
+        get_provider_package_from_package_id(package)
+        for package in PROVIDERS_REQUIREMENTS
+    )
 
 
 class AirflowDistribution(Distribution):

@@ -188,7 +188,7 @@ class S3KeySizeSensor(S3KeySensor):
         for page in response:
             if 'Contents' in page:
                 _temp = [k for k in page['Contents'] if isinstance(k.get('Size', None), (int, float))]
-                keys = keys + _temp
+                keys += _temp
         return keys
 
     def check_fn(self, data: List, object_min_size: Optional[Union[int, float]] = 0) -> bool:

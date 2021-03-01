@@ -52,10 +52,9 @@ class SecretsManagerHook(AwsBaseHook):
         # these fields will be populated.
         get_secret_value_response = self.get_conn().get_secret_value(SecretId=secret_name)
         if 'SecretString' in get_secret_value_response:
-            secret = get_secret_value_response['SecretString']
+            return get_secret_value_response['SecretString']
         else:
-            secret = base64.b64decode(get_secret_value_response['SecretBinary'])
-        return secret
+            return base64.b64decode(get_secret_value_response['SecretBinary'])
 
     def get_secret_as_dict(self, secret_name: str) -> dict:
         """

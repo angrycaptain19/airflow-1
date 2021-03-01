@@ -95,12 +95,16 @@ class DagCode(Base):
         if not existing_orm_filelocs.issubset(filelocs):
             conflicting_filelocs = existing_orm_filelocs.difference(filelocs)
             hashes_to_filelocs = {DagCode.dag_fileloc_hash(fileloc): fileloc for fileloc in filelocs}
-            message = ""
-            for fileloc in conflicting_filelocs:
-                message += (
+            message = "".join(
+                (
                     "Filename '{}' causes a hash collision in the "
                     + "database with '{}'. Please rename the file."
-                ).format(hashes_to_filelocs[DagCode.dag_fileloc_hash(fileloc)], fileloc)
+                ).format(
+                    hashes_to_filelocs[DagCode.dag_fileloc_hash(fileloc)], fileloc
+                )
+                for fileloc in conflicting_filelocs
+            )
+
             raise AirflowException(message)
 
         existing_filelocs = {dag_code.fileloc for dag_code in existing_orm_dag_codes}

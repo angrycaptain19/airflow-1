@@ -84,7 +84,7 @@ def flower(args):
 
 def _serve_logs(skip_serve_logs: bool = False) -> Optional[Process]:
     """Starts serve_logs sub-process"""
-    if skip_serve_logs is False:
+    if not skip_serve_logs:
         sub_proc = Process(target=serve_logs)
         sub_proc.start()
         return sub_proc
@@ -155,23 +155,21 @@ def worker(args):
         # Run Celery worker as daemon
         handle = setup_logging(log_file)
         stdout = open(stdout, 'w+')
-        stderr = open(stderr, 'w+')
+        with open(stderr, 'w+') as stderr:
+            if args.umask:
+                umask = args.umask
 
-        if args.umask:
-            umask = args.umask
+            ctx = daemon.DaemonContext(
+                files_preserve=[handle],
+                umask=int(umask, 8),
+                stdout=stdout,
+                stderr=stderr,
+            )
+            with ctx:
+                sub_proc = _serve_logs(skip_serve_logs)
+                worker_instance.run(**options)
 
-        ctx = daemon.DaemonContext(
-            files_preserve=[handle],
-            umask=int(umask, 8),
-            stdout=stdout,
-            stderr=stderr,
-        )
-        with ctx:
-            sub_proc = _serve_logs(skip_serve_logs)
-            worker_instance.run(**options)
-
-        stdout.close()
-        stderr.close()
+            stdout.close()
     else:
         # Run Celery worker in the same process
         sub_proc = _serve_logs(skip_serve_logs)

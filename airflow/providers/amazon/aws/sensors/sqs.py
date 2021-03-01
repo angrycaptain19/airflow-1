@@ -87,14 +87,13 @@ class SQSSensor(BaseSensorOperator):
 
             result = sqs_conn.delete_message_batch(QueueUrl=self.sqs_queue, Entries=entries)
 
-            if 'Successful' in result:
-                context['ti'].xcom_push(key='messages', value=messages)
-                return True
-            else:
+            if 'Successful' not in result:
                 raise AirflowException(
                     'Delete SQS Messages failed ' + str(result) + ' for messages ' + str(messages)
                 )
 
+            context['ti'].xcom_push(key='messages', value=messages)
+            return True
         return False
 
     def get_hook(self) -> SQSHook:

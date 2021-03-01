@@ -43,8 +43,7 @@ def _create_provider_info_schema_validator():
     """Creates JSON schema validator from the provider_info.schema.json"""
     schema = json.loads(importlib_resources.read_text('airflow', 'provider_info.schema.json'))
     cls = jsonschema.validators.validator_for(schema)
-    validator = cls(schema)
-    return validator
+    return cls(schema)
 
 
 def _create_customized_form_field_behaviours_schema_validator():
@@ -53,8 +52,7 @@ def _create_customized_form_field_behaviours_schema_validator():
         importlib_resources.read_text('airflow', 'customized_form_field_behaviours.schema.json')
     )
     cls = jsonschema.validators.validator_for(schema)
-    validator = cls(schema)
-    return validator
+    return cls(schema)
 
 
 class ProviderInfo(NamedTuple):

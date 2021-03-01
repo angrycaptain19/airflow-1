@@ -85,6 +85,4 @@ class EmrHook(AwsBaseHook):
         config = emr_conn.extra_dejson.copy()
         config.update(job_flow_overrides)
 
-        response = self.get_conn().run_job_flow(**config)
-
-        return response
+        return self.get_conn().run_job_flow(**config)

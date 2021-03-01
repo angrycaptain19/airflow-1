@@ -321,6 +321,4 @@ class PodGenerator:
             return None
 
         safe_uuid = uuid.uuid4().hex
-        safe_pod_id = dag_id[: MAX_POD_ID_LEN - len(safe_uuid) - 1] + "-" + safe_uuid
-
-        return safe_pod_id
+        return dag_id[: MAX_POD_ID_LEN - len(safe_uuid) - 1] + "-" + safe_uuid

@@ -280,7 +280,7 @@ class DAG(LoggingMixin):
         validate_key(dag_id)
 
         self._dag_id = dag_id
-        self._full_filepath = full_filepath if full_filepath else ''
+        self._full_filepath = full_filepath or ''
         self._concurrency = concurrency
         self._pickle_id: Optional[int] = None
 
@@ -302,11 +302,14 @@ class DAG(LoggingMixin):
             self.timezone = settings.TIMEZONE
 
         # Apply the timezone we settled on to end_date if it wasn't supplied
-        if 'end_date' in self.default_args and self.default_args['end_date']:
-            if isinstance(self.default_args['end_date'], str):
-                self.default_args['end_date'] = timezone.parse(
-                    self.default_args['end_date'], timezone=self.timezone
-                )
+        if (
+            'end_date' in self.default_args
+            and self.default_args['end_date']
+            and isinstance(self.default_args['end_date'], str)
+        ):
+            self.default_args['end_date'] = timezone.parse(
+                self.default_args['end_date'], timezone=self.timezone
+            )
 
         self.start_date = timezone.convert_to_utc(start_date)
         self.end_date = timezone.convert_to_utc(end_date)
@@ -417,9 +420,10 @@ class DAG(LoggingMixin):
             permissions.DEPRECATED_ACTION_CAN_DAG_READ: permissions.ACTION_CAN_READ,
             permissions.DEPRECATED_ACTION_CAN_DAG_EDIT: permissions.ACTION_CAN_EDIT,
         }
-        updated_access_control = {}
-        for role, perms in access_control.items():
-            updated_access_control[role] = {new_perm_mapping.get(perm, perm) for perm in perms}
+        updated_access_control = {
+            role: {new_perm_mapping.get(perm, perm) for perm in perms}
+            for role, perms in access_control.items()
+        }
 
         if access_control != updated_access_control:
             warnings.warn(
@@ -455,10 +459,7 @@ class DAG(LoggingMixin):
         start = cron.get_next(datetime)
         cron_next = cron.get_next(datetime)
 
-        if cron_next.minute == start.minute and cron_next.hour == start.hour:
-            return True
-
-        return False
+        return cron_next.minute == start.minute and cron_next.hour == start.hour
 
     def following_schedule(self, dttm):
         """
@@ -563,7 +564,7 @@ class DAG(LoggingMixin):
             return None
 
         # don't do scheduler catchup for dag's that don't have dag.catchup = True
-        if not (self.catchup or self.schedule_interval == '@once'):
+        if not self.catchup and self.schedule_interval != '@once':
             # The logic is that we move start_date up until
             # one period before, so that timezone.utcnow() is AFTER
             # the period end, and the job can be created...
@@ -575,12 +576,8 @@ class DAG(LoggingMixin):
             else:
                 new_start = self.previous_schedule(last_start)
 
-            if self.start_date:
-                if new_start >= self.start_date:
-                    self.start_date = new_start
-            else:
+            if new_start >= self.start_date or not self.start_date:
                 self.start_date = new_start
-
         next_run_date = None
         if not date_last_automated_dagrun:
             # First run
@@ -635,7 +632,7 @@ class DAG(LoggingMixin):
         using_end_date = end_date
 
         # dates for dag runs
-        using_start_date = using_start_date or min([t.start_date for t in self.tasks])
+        using_start_date = using_start_date or min(t.start_date for t in self.tasks)
         using_end_date = using_end_date or timezone.utcnow()
 
         # next run date for a subdag isn't relevant (schedule_interval for subdags
@@ -870,11 +867,7 @@ class DAG(LoggingMixin):
         """
         runs = DagRun.find(dag_id=self.dag_id, state=State.RUNNING)
 
-        active_dates = []
-        for run in runs:
-            active_dates.append(run.execution_date)
-
-        return active_dates
+        return [run.execution_date for run in runs]
 
     @provide_session
     def get_num_active_runs(self, external_trigger=None, session=None):
@@ -908,13 +901,14 @@ class DAG(LoggingMixin):
         :param session:
         :return: The DagRun if found, otherwise None.
         """
-        dagrun = (
+        return (
             session.query(DagRun)
-            .filter(DagRun.dag_id == self.dag_id, DagRun.execution_date == execution_date)
+            .filter(
+                DagRun.dag_id == self.dag_id,
+                DagRun.execution_date == execution_date,
+            )
             .first()
         )
-
-        return dagrun
 
     @provide_session
     def get_dagruns_between(self, start_date, end_date, session=None):
@@ -926,7 +920,7 @@ class DAG(LoggingMixin):
         :param session:
         :return: The list of DagRuns found.
         """
-        dagruns = (
+        return (
             session.query(DagRun)
             .filter(
                 DagRun.dag_id == self.dag_id,
@@ -935,8 +929,6 @@ class DAG(LoggingMixin):
             )
             .all()
         )
-
-        return dagruns
 
     @provide_session
     def get_latest_execution_date(self, session=None):
@@ -1185,9 +1177,11 @@ class DAG(LoggingMixin):
         tis = session.query(TI)
         if include_subdags:
             # Crafting the right filter for dag_id and task_ids combo
-            conditions = []
-            for dag in self.subdags + [self]:
-                conditions.append((TI.dag_id == dag.dag_id) & TI.task_id.in_(dag.task_ids))
+            conditions = [
+                (TI.dag_id == dag.dag_id) & TI.task_id.in_(dag.task_ids)
+                for dag in self.subdags + [self]
+            ]
+
             tis = tis.filter(or_(*conditions))
         else:
             tis = session.query(TI).filter(TI.dag_id == self.dag_id)
@@ -1314,7 +1308,7 @@ class DAG(LoggingMixin):
         if count == 0:
             return 0
         if confirm_prompt:
-            ti_list = "\n".join([str(t) for t in tis])
+            ti_list = "\n".join(str(t) for t in tis)
             question = (
                 "You are about to delete these {count} tasks:\n{ti_list}\n\nAre you sure? (yes/no): "
             ).format(count=count, ti_list=ti_list)
@@ -1378,7 +1372,7 @@ class DAG(LoggingMixin):
             print("Nothing to clear.")
             return 0
         if confirm_prompt:
-            ti_list = "\n".join([str(t) for t in all_tis])
+            ti_list = "\n".join(str(t) for t in all_tis)
             question = f"You are about to delete these {count} tasks:\n{ti_list}\n\nAre you sure? (yes/no): "
             do_it = utils.helpers.ask_yesno(question)
 
@@ -1532,8 +1526,7 @@ class DAG(LoggingMixin):
         raise TaskNotFound(f"Task {task_id} not found")
 
     def pickle_info(self):
-        d = {}
-        d['is_picklable'] = True
+        d = {'is_picklable': True}
         try:
             dttm = timezone.utcnow()
             pickled = pickle.dumps(self)

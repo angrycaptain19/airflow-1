@@ -364,8 +364,8 @@ def task_test(args, dag=None):
     if not already_has_stream_handler:
         logging.getLogger('airflow.task').propagate = True
 
-    env_vars = {'AIRFLOW_TEST_MODE': 'True'}
     if args.env_vars:
+        env_vars = {'AIRFLOW_TEST_MODE': 'True'}
         env_vars.update(args.env_vars)
         os.environ.update(env_vars)
 
@@ -384,11 +384,10 @@ def task_test(args, dag=None):
         else:
             ti.run(ignore_task_deps=True, ignore_ti_state=True, test_mode=True)
     except Exception:  # pylint: disable=broad-except
-        if args.post_mortem:
-            debugger = _guess_debugger()
-            debugger.post_mortem()
-        else:
+        if not args.post_mortem:
             raise
+        debugger = _guess_debugger()
+        debugger.post_mortem()
     finally:
         if not already_has_stream_handler:
             # Make sure to reset back to normal. When run for CLI this doesn't
@@ -426,13 +425,13 @@ def task_clear(args):
         # todo clear command only accepts a single dag_id. no reason for get_dags with 's' except regex?
         dags = get_dags(args.subdir, args.dag_id, use_regex=args.dag_regex)
 
-        if args.task_regex:
-            for idx, dag in enumerate(dags):
-                dags[idx] = dag.partial_subset(
-                    task_ids_or_regex=args.task_regex,
-                    include_downstream=args.downstream,
-                    include_upstream=args.upstream,
-                )
+    if args.task_regex:
+        for idx, dag in enumerate(dags):
+            dags[idx] = dag.partial_subset(
+                task_ids_or_regex=args.task_regex,
+                include_downstream=args.downstream,
+                include_upstream=args.upstream,
+            )
 
     DAG.clear_dags(
         dags,

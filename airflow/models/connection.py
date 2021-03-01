@@ -184,11 +184,7 @@ class Connection(Base, LoggingMixin):  # pylint: disable=too-many-instance-attri
             host_block += quote(self.host, safe='')
 
         if self.port:
-            if host_block > '':
-                host_block += f':{self.port}'
-            else:
-                host_block += f'@:{self.port}'
-
+            host_block += f':{self.port}' if host_block > '' else f'@:{self.port}'
         if self.schema:
             host_block += f"/{quote(self.schema, safe='')}"
 
@@ -201,18 +197,18 @@ class Connection(Base, LoggingMixin):  # pylint: disable=too-many-instance-attri
 
     def get_password(self) -> Optional[str]:
         """Return encrypted password."""
-        if self._password and self.is_encrypted:
-            fernet = get_fernet()
-            if not fernet.is_encrypted:
-                raise AirflowException(
-                    "Can't decrypt encrypted password for login={}, \
-                    FERNET_KEY configuration is missing".format(
-                        self.login
-                    )
-                )
-            return fernet.decrypt(bytes(self._password, 'utf-8')).decode()
-        else:
+        if not self._password or not self.is_encrypted:
             return self._password
+
+        fernet = get_fernet()
+        if not fernet.is_encrypted:
+            raise AirflowException(
+                "Can't decrypt encrypted password for login={}, \
+                    FERNET_KEY configuration is missing".format(
+                    self.login
+                )
+            )
+        return fernet.decrypt(bytes(self._password, 'utf-8')).decode()
 
     def set_password(self, value: Optional[str]):
         """Encrypt password and set in object attribute."""
@@ -228,18 +224,18 @@ class Connection(Base, LoggingMixin):  # pylint: disable=too-many-instance-attri
 
     def get_extra(self) -> Dict:
         """Return encrypted extra-data."""
-        if self._extra and self.is_extra_encrypted:
-            fernet = get_fernet()
-            if not fernet.is_encrypted:
-                raise AirflowException(
-                    "Can't decrypt `extra` params for login={},\
-                    FERNET_KEY configuration is missing".format(
-                        self.login
-                    )
-                )
-            return fernet.decrypt(bytes(self._extra, 'utf-8')).decode()
-        else:
+        if not self._extra or not self.is_extra_encrypted:
             return self._extra
+
+        fernet = get_fernet()
+        if not fernet.is_encrypted:
+            raise AirflowException(
+                "Can't decrypt `extra` params for login={},\
+                    FERNET_KEY configuration is missing".format(
+                    self.login
+                )
+            )
+        return fernet.decrypt(bytes(self._extra, 'utf-8')).decode()
 
     def set_extra(self, value: str):
         """Encrypt extra-data and save in object attribute to object."""

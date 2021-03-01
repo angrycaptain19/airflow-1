@@ -133,8 +133,7 @@ class SystemsManagerParameterStoreBackend(BaseSecretsBackend, LoggingMixin):
         ssm_path = self.build_path(path_prefix, secret_id)
         try:
             response = self.client.get_parameter(Name=ssm_path, WithDecryption=True)
-            value = response["Parameter"]["Value"]
-            return value
+            return response["Parameter"]["Value"]
         except self.client.exceptions.ParameterNotFound:
             self.log.info(
                 "An error occurred (ParameterNotFound) when calling the GetParameter operation: "
